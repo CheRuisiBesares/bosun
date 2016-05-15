@@ -323,16 +323,17 @@ type Template struct {
 type Notification struct {
 	Text string
 	Vars
-	Name         string
-	Email        []*mail.Address
-	Post, Get    *url.URL
-	Body         *ttemplate.Template
-	Print        bool
-	Next         *Notification
-	Timeout      time.Duration
-	ContentType  string
-	RunOnActions bool
-	UseBody      bool
+	Name                    string
+	Email                   []*mail.Address
+	Post, Get               *url.URL
+	Body                    *ttemplate.Template
+	Print                   bool
+	Next                    *Notification
+	Timeout                 time.Duration
+	ContentType             string
+	RunOnActions            bool
+	UseBody                 bool
+	NotifyOnAllStateChanges bool
 
 	next      string
 	email     string
@@ -1055,6 +1056,7 @@ func (c *Conf) loadNotification(s *parse.SectionNode) {
 		ContentType:  "application/x-www-form-urlencoded",
 		Name:         name,
 		RunOnActions: true,
+		NotifyOnAllStateChanges, false,
 	}
 	n.Text = s.RawText
 	funcs := ttemplate.FuncMap{
@@ -1128,6 +1130,8 @@ func (c *Conf) loadNotification(s *parse.SectionNode) {
 			n.RunOnActions = v == "true"
 		case "useBody":
 			n.UseBody = v == "true"
+		case "notifyOnAllStateChanges":
+			n.NotifyOnAllStateChanges = v == "true"
 		default:
 			c.errorf("unknown key %s", k)
 		}
