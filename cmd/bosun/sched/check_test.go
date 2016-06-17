@@ -232,6 +232,92 @@ func TestCheckNotify(t *testing.T) {
 	}
 }
 
+func TestNotifyOnAllStateChanges(t *testing.T) {
+	defer setup()()
+	c, err := conf.New("", `
+		template t {
+			subject = 1
+		}
+		notification n {
+			print = true
+			notifyOnAllStateChanges = true
+		}
+		alert a {
+			warnNotification = n
+			warn = 1
+			critNotification = n
+			crit = 1
+			template = t
+		}
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, _ := initSched(c)
+	ak := models.NewAlertKey("a", nil)
+	r := &RunHistory{
+		Events: map[models.AlertKey]*models.Event{
+			ak: {Status: models.StWarning},
+		},
+	}
+	hasNots := func() bool {
+		defer func() {
+			s.pendingNotifications = nil
+		}()
+		if len(s.pendingNotifications) != 1 {
+			return false
+		}
+		for k, v := range s.pendingNotifications {
+			if k.Name != "n" || len(v) != 1 || v[0].Alert != "a" {
+				return false
+			}
+			return true
+		}
+		return false
+	}
+
+	type stateTransition struct {
+		S          models.Status
+		ExpectNots bool
+	}
+	transitions := []stateTransition{
+		{models.StWarning, true},
+		{models.StNormal, true},
+		{models.StWarning, true},
+		{models.StNormal, true},
+		{models.StCritical, true},
+		{models.StWarning, true},
+		{models.StCritical, true},
+	}
+
+	for i, trans := range transitions {
+		r.Events[ak].Status = trans.S
+		s.RunHistory(r)
+		has := hasNots()
+		if has && !trans.ExpectNots {
+			t.Fatalf("unexpected notifications for transition %d.", i)
+		} else if !has && trans.ExpectNots {
+			t.Fatalf("expected notifications for transition %d.", i)
+		}
+	}
+	r.Events[ak].Status = models.StNormal
+	s.RunHistory(r)
+	// since we are alertig on all changes there is one pending notification
+	// we check it but mostly need to clear pending queue
+	if !hasNots() {
+		t.Fatal("expected notifications for return to normal state.")
+	}
+	// Close the alert, so it should notify next time.
+	if err := s.ActionByAlertKey("", "", models.ActionClose, ak); err != nil {
+		t.Fatal(err)
+	}
+	r.Events[ak].Status = models.StWarning
+	s.RunHistory(r)
+	if !hasNots() {
+		t.Fatal("expected notification")
+	}
+}
+
 func TestCheckNotifyUnknown(t *testing.T) {
 	defer setup()()
 	nc := make(chan string, 1)

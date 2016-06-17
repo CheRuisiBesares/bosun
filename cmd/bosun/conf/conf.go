@@ -1077,11 +1077,11 @@ func (c *Conf) loadNotification(s *parse.SectionNode) {
 		c.errorf("duplicate notification name: %s", name)
 	}
 	n := Notification{
-		Vars:         make(map[string]string),
-		ContentType:  "application/x-www-form-urlencoded",
-		Name:         name,
-		RunOnActions: true,
-		NotifyOnAllStateChanges, false,
+		Vars:                    make(map[string]string),
+		ContentType:             "application/x-www-form-urlencoded",
+		Name:                    name,
+		RunOnActions:            true,
+		NotifyOnAllStateChanges: false,
 	}
 	n.Text = s.RawText
 	funcs := ttemplate.FuncMap{

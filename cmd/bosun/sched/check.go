@@ -143,6 +143,7 @@ func (s *Schedule) runHistory(r *RunHistory, ak models.AlertKey, event *models.E
 
 	shouldNotify := false
 	newIncident := false
+	stateChange := false
 	if incident == nil {
 		incident = NewIncident(ak)
 		newIncident = true
@@ -165,6 +166,7 @@ func (s *Schedule) runHistory(r *RunHistory, ak models.AlertKey, event *models.E
 	}
 	if event.Status != incident.CurrentStatus {
 		incident.Events = append(incident.Events, *event)
+		stateChange = true
 	}
 	incident.CurrentStatus = event.Status
 
@@ -222,6 +224,16 @@ func (s *Schedule) runHistory(r *RunHistory, ak models.AlertKey, event *models.E
 		}
 	}
 
+	notifyStateChange := func(ns *conf.Notifications) {
+		nots := ns.Get(s.Conf, incident.AlertKey.Group())
+		for _, n := range nots {
+			if n.NotifyOnAllStateChanges {
+				s.Notify(incident, n)
+				checkNotify = true
+			}
+		}
+	}
+
 	// lock while we change notifications.
 	s.Lock("RunHistory")
 	if shouldNotify {
@@ -230,6 +242,12 @@ func (s *Schedule) runHistory(r *RunHistory, ak models.AlertKey, event *models.E
 			return
 		}
 		notifyCurrent()
+	}
+
+	// all statefull notifications have gone out at this point
+	// lets catch all notifications that are only state changes
+	if stateChange && !shouldNotify {
+		notifyStateChange(a.CritNotification)
 	}
 
 	// finally close an open alert with silence once it goes back to normal.
