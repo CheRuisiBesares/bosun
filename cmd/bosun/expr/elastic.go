@@ -245,6 +245,9 @@ func (e ElasticHosts) InitClient() error {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("%+v\n", esClient)
+		esClient.SetSnifferTimeoutStartup(time.Second * 10)
+		esClient.SetSnifferTimeout(time.Second * 10)
 	}
 	return nil
 }

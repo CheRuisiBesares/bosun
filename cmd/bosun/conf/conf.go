@@ -479,6 +479,7 @@ func (c *Conf) loadGlobal(p *parse.PairNode) {
 		c.LogstashElasticHosts = strings.Split(v, ",")
 	case "elasticHosts":
 		c.ElasticHosts = strings.Split(v, ",")
+		fmt.Println(c.ElasticHosts)
 	case "influxHost":
 		c.InfluxConfig.URL.Host = v
 		c.InfluxConfig.UserAgent = "bosun"
